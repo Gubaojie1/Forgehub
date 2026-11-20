@@ -1,0 +1,16 @@
+# Preview stays a separate origin, but uses port 80, which is already open.
+# Do not put it on a second port that the security group only allows for one IP.
+# Main app build AND service env: PROTOTYPE_PREVIEW_ORIGIN=http://47.99.63.33.sslip.io
+server {
+    listen 80;
+    listen [::]:80;
+    server_name 47.99.63.33.sslip.io;
+    location / {
+        proxy_pass http://127.0.0.1:3081;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header Cookie "";
+        proxy_set_header Authorization "";
+    }
+}

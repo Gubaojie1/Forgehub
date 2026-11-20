@@ -1,0 +1,11 @@
+ALTER TABLE `release_requests` ADD COLUMN `requester_email` text;
+ALTER TABLE `release_requests` ADD COLUMN `priority` text NOT NULL DEFAULT '普通';
+ALTER TABLE `release_requests` ADD COLUMN `expected_at` text;
+ALTER TABLE `release_requests` ADD COLUMN `claimed_at` text;
+ALTER TABLE `release_requests` ADD COLUMN `test_notes` text;
+ALTER TABLE `release_requests` ADD COLUMN `review_comment` text;
+ALTER TABLE `release_requests` ADD COLUMN `first_reviewed_by` text;
+ALTER TABLE `release_requests` ADD COLUMN `first_reviewed_at` text;
+UPDATE `release_requests` SET `status` = '测试中', `claimed_at` = COALESCE(`claimed_at`, `created_at`) WHERE `status` = '待测试' AND `assigned_tester_email` IS NOT NULL;
+UPDATE `release_requests` SET `status` = '待领取' WHERE `status` = '待测试' AND `assigned_tester_email` IS NULL;
+UPDATE `release_requests` SET `status` = '待审核' WHERE `status` = '待审批';

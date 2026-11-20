@@ -1,0 +1,24 @@
+services:
+  forgehub:
+    build:
+      context: .
+      dockerfile: Dockerfile.selfhost
+    container_name: forgehub
+    restart: unless-stopped
+    ports:
+      - "80:3000"
+    environment:
+      SELF_HOSTED: "true"
+      DATA_DIR: /data
+      DATABASE_PATH: /data/forgehub.sqlite
+      FILE_STORAGE_DIR: /data/files
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@forgehub.local}
+      ADMIN_DISPLAY_NAME: ${ADMIN_DISPLAY_NAME:-系统管理员}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?请在 .env.selfhost 中设置 ADMIN_PASSWORD}
+      SESSION_SECRET: ${SESSION_SECRET:?请在 .env.selfhost 中设置 SESSION_SECRET}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+    volumes:
+      - forgehub-data:/data
+
+volumes:
+  forgehub-data:

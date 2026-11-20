@@ -1,0 +1,21 @@
+# Review Node executable and file permissions before installing.
+[Unit]
+Description=ForgeHub isolated HTML prototype preview
+After=network.target
+
+[Service]
+Type=simple
+User=nobody
+WorkingDirectory=/opt/forgehub
+ExecStart=/usr/bin/node /opt/forgehub/tools/prototype-preview-server.cjs
+Environment=HOST=127.0.0.1
+Environment=PORT=3081
+Environment=PROTOTYPE_APP_ORIGIN=http://47.99.63.33
+Restart=on-failure
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>T1 设备 BLE 通信协议</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --card: #ffffff;
+      --border: #d8dee9;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --primary: #2563eb;
+      --cmd: #ecfdf5;
+      --resp: #eff6ff;
+      --warn: #fffbeb;
+      --code: #111827;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.55;
+    }
+    .wrap { max-width: 1200px; margin: 0 auto; padding: 24px; }
+    h1 { margin: 0 0 8px; font-size: 28px; }
+    .subtitle { color: var(--muted); margin-bottom: 24px; }
+    h2 {
+      margin: 32px 0 12px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--primary);
+      font-size: 20px;
+    }
+    h3 { margin: 20px 0 10px; font-size: 16px; color: #374151; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 16px;
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+      background: #fff;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 8px 10px;
+      vertical-align: top;
+      text-align: left;
+    }
+    th {
+      background: #eef2ff;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    tr:nth-child(even) td { background: #fafafa; }
+    code, .hex {
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 13px;
+      background: #f3f4f6;
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
+    .hex { letter-spacing: 0.3px; }
+    .tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .tag-cmd { background: #dcfce7; color: #166534; }
+    .tag-resp { background: #dbeafe; color: #1d4ed8; }
+    .tag-push { background: #fef3c7; color: #92400e; }
+    .tag-none { background: #f3f4f6; color: #4b5563; }
+    .note {
+      background: var(--warn);
+      border: 1px solid #fde68a;
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin: 12px 0;
+      font-size: 14px;
+    }
+    .frame {
+      font-family: Consolas, monospace;
+      background: #111827;
+      color: #e5e7eb;
+      padding: 12px 14px;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 13px;
+      line-height: 1.7;
+    }
+    .legend { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+    .mono { font-family: Consolas, monospace; }
+    .center { text-align: center; }
+    .nowrap { white-space: nowrap; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>T1 设备 BLE 通信协议</h1>
+  <div class="subtitle">
+    适用：上位机 / APP 开发 &nbsp;|&nbsp; 传输：BLE GATT &nbsp;|&nbsp; 固件参考：V2.2.0.3
+  </div>
+
+  <!-- 1. 快速接入 -->
+  <h2>1. 快速接入</h2>
+  <div class="card">
+    <table>
+      <thead>
+        <tr><th>步骤</th><th>操作</th><th>说明</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>1</td><td>扫描并连接设备</td><td>广播名示例：<code>BLE-BOX</code></td></tr>
+        <tr><td>2</td><td>发现服务 <code>0xFF12</code></td><td>Primary Service</td></tr>
+        <tr><td>3</td><td>开启 Notify</td><td>特征 <code>0xFF14</code>，写 CCCD <code>0x0001</code></td></tr>
+        <tr><td>4</td><td>下发命令</td><td>Write 特征 <code>0xFF13</code>（或 Write Without Response <code>0xFF15</code>）</td></tr>
+        <tr><td>5</td><td>接收应答/心跳</td><td>Notify 特征 <code>0xFF14</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>GATT 特征表</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>方向</th><th>UUID</th><th>Handle</th><th>属性</th><th>用途</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>APP → 设备</td><td><code>0xFF13</code></td><td><code>0x000C</code></td><td>Write</td><td>下发命令帧</td></tr>
+        <tr><td>设备 → APP</td><td><code>0xFF14</code></td><td><code>0x000E</code></td><td>Notify</td><td>应答 / 心跳</td></tr>
+        <tr><td>APP → 设备</td><td><code>0xFF15</code></td><td><code>0x0011</code></td><td>Write Without Response</td><td>可选，亦可收命令</td></tr>
+        <tr><td>CCCD</td><td><code>0x2902</code></td><td><code>0x000F</code></td><td>Read/Write</td><td>必须开启 Notify</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 2. 帧格式 -->
+  <h2>2. 帧格式</h2>
+
+  <div class="card">
+    <h3>2.1 APP → 设备（命令帧）</h3>
+    <div class="frame">AA | Size(2B, LE) | Status(1B) | MsgID(1B) | Data(N) | CRC8(1B) | BB</div>
+    <table style="margin-top:12px">
+      <thead>
+        <tr><th>字段</th><th>长度</th><th>值/说明</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>包头</td><td>1</td><td>固定 <code>0xAA</code></td></tr>
+        <tr><td>Size</td><td>2</td><td>小端；<code>Size = 4 + N</code>（含 Size+Status+MsgID+Data）</td></tr>
+        <tr><td>Status</td><td>1</td><td>APP 下发固定 <code>0x00</code></td></tr>
+        <tr><td>MsgID</td><td>1</td><td>命令号，见命令表</td></tr>
+        <tr><td>Data</td><td>N</td><td>载荷，可为 0</td></tr>
+        <tr><td>CRC8</td><td>1</td><td>对 <strong>Size ~ Data</strong> 共 Size 字节计算</td></tr>
+        <tr><td>包尾</td><td>1</td><td>固定 <code>0xBB</code></td></tr>
+      </tbody>
+    </table>
+    <div class="note">整包长度 = <code>1 + Size + 1 + 1 = Size + 3</code>。例：无 Data 时 Size=4，整包 7 字节。</div>
+  </div>
+
+  <div class="card">
+    <h3>2.2 设备 → APP（应答/上报帧）</h3>
+    <div class="frame">AB | Size(2B, LE) | Status(1B) | MsgID(1B) | Data(N) | CRC8(1B) | CC</div>
+    <table style="margin-top:12px">
+      <thead>
+        <tr><th>字段</th><th>长度</th><th>值/说明</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>包头</td><td>1</td><td>固定 <code>0xAB</code></td></tr>
+        <tr><td>Size</td><td>2</td><td>小端；同命令</td></tr>
+        <tr><td>Status</td><td>1</td><td>设备上报固定 <code>0x01</code></td></tr>
+        <tr><td>MsgID</td><td>1</td><td>与命令对应，或心跳 <code>0x34</code></td></tr>
+        <tr><td>Data</td><td>N</td><td>载荷；纯 ACK 时 N=0</td></tr>
+        <tr><td>CRC8</td><td>1</td><td>算法同命令</td></tr>
+        <tr><td>包尾</td><td>1</td><td>固定 <code>0xCC</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 3. CRC8 -->
+  <h2>3. CRC8 算法</h2>
+  <div class="card">
+    <table>
+      <thead><tr><th>项目</th><th>值</th></tr></thead>
+      <tbody>
+        <tr><td>算法</td><td>CRC8-CCITT</td></tr>
+        <tr><td>多项式</td><td><code>0x07</code></td></tr>
+        <tr><td>初值</td><td><code>0x00</code></td></tr>
+        <tr><td>计算范围</td><td>从 Size 低字节到 Data 末字节（不含 AA/AB、CRC、BB/CC）</td></tr>
+      </tbody>
+    </table>
+    <pre class="frame" style="margin-top:12px">uint8_t crc8(const uint8_t *data, uint16_t len) {
+    uint8_t crc = 0;
+    for (uint16_t i = 0; i &lt; len; i++) {
+        crc ^= data[i];
+        for (int j = 0; j &lt; 8; j++)
+            crc = (crc &amp; 0x80) ? ((crc &lt;&lt; 1) ^ 0x07) : (crc &lt;&lt; 1);
+    }
+    return crc;
+}</pre>
+  </div>
+
+  <!-- 4. 命令总览 -->
+  <h2>4. 命令总览</h2>
+  <div class="card">
+    <div class="legend">
+      <span class="tag tag-cmd">APP→设备</span>
+      <span class="tag tag-resp">设备→APP</span>
+      <span class="tag tag-push">设备主动上报</span>
+      <span class="tag tag-none">无应答</span>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>MsgID</th><th>十进制</th><th>名称</th><th>方向</th><th>Data 长度</th><th>应答</th><th>备注</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><code>0x28</code></td><td>40</td><td>设置 PWM 频率</td><td><span class="tag tag-cmd">下发</span></td><td>1</td><td><span class="tag tag-none">无</span></td><td>自动切 Mode4；状态看心跳</td></tr>
+        <tr><td><code>0x29</code></td><td>41</td><td>查询 PWM/档位</td><td><span class="tag tag-cmd">下发</span> / <span class="tag tag-resp">应答</span></td><td>0 / 2</td><td>2B</td><td>[Freq, Gear]</td></tr>
+        <tr><td><code>0x2A</code></td><td>42</td><td>切换 TMS 模式</td><td><span class="tag tag-cmd">下发</span></td><td>1</td><td><span class="tag tag-none">无</span></td><td>BLE 连接时禁止切 Mode1</td></tr>
+        <tr><td><code>0x2B</code></td><td>43</td><td>设置 Mode3 参数</td><td><span class="tag tag-cmd">下发</span></td><td>44</td><td><span class="tag tag-none">无</span></td><td>22 组 (频率,间隔分钟)</td></tr>
+        <tr><td><code>0x2C</code></td><td>44</td><td>获取 Mode3 参数</td><td><span class="tag tag-cmd">下发</span> / <span class="tag tag-resp">应答</span></td><td>0 / 44</td><td>44B</td><td>复用 kInParameterDuty</td></tr>
+        <tr><td><code>0x2D</code></td><td>45</td><td>设置间隔时间</td><td><span class="tag tag-cmd">下发</span></td><td>—</td><td>空 ACK</td><td><strong>已废弃</strong>，请用 0x2B</td></tr>
+        <tr><td><code>0x2E</code></td><td>46</td><td>查询固件版本</td><td><span class="tag tag-cmd">下发</span> / <span class="tag tag-resp">应答</span></td><td>0 / 4</td><td>4B</td><td>主.次.子.修订</td></tr>
+        <tr><td><code>0x2F</code></td><td>47</td><td>远程关机</td><td><span class="tag tag-cmd">下发</span> / <span class="tag tag-resp">应答</span></td><td>0</td><td>空 ACK</td><td>ACK 后关机</td></tr>
+        <tr><td><code>0x30</code></td><td>48</td><td>查询 A2DP 状态</td><td><span class="tag tag-cmd">下发</span> / <span class="tag tag-resp">应答</span></td><td>0 / 1</td><td>1B</td><td>0=未连 1=已连</td></tr>
+        <tr><td><code>0x31</code></td><td>49</td><td>设置音量</td><td><span class="tag tag-cmd">下发</span> / <span class="tag tag-resp">应答</span></td><td>1</td><td>空 ACK</td><td>范围 1~16</td></tr>
+        <tr><td><code>0x32</code></td><td>50</td><td>查询 SN</td><td><span class="tag tag-cmd">下发</span> / <span class="tag tag-resp">应答</span></td><td>0 / 12</td><td>12B ASCII</td><td>—</td></tr>
+        <tr><td><code>0x33</code></td><td>51</td><td>设置档位</td><td><span class="tag tag-cmd">下发</span></td><td>1</td><td><span class="tag tag-none">无</span></td><td>0=舒缓 1=强化</td></tr>
+        <tr><td><code>0x34</code></td><td>52</td><td>心跳</td><td><span class="tag tag-push">主动</span></td><td>8</td><td>—</td><td>BLE 连接时 1Hz</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 5. 命令 Data 字段 -->
+  <h2>5. 命令 Data 字段详解</h2>
+
+  <div class="card">
+    <h3>5.1 <code>0x28</code> 设置 PWM 频率</h3>
+    <table>
+      <thead><tr><th>偏移</th><th>长度</th><th>字段</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td>0</td><td>1</td><td>Freq</td><td>PWM 频率，单位 Hz（如 1~8）</td></tr>
+      </tbody>
+    </table>
+    <p>示例 4Hz：<span class="hex">AA 05 00 00 28 04 F7 BB</span></p>
+  </div>
+
+  <div class="card">
+    <h3>5.2 <code>0x29</code> 查询 PWM — 应答 Data</h3>
+    <table>
+      <thead><tr><th>偏移</th><th>长度</th><th>字段</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td>0</td><td>1</td><td>PWM_Freq</td><td>当前频率 Hz</td></tr>
+        <tr><td>1</td><td>1</td><td>Gear</td><td>0=舒缓 1=强化</td></tr>
+      </tbody>
+    </table>
+    <p>下发：<span class="hex">AA 04 00 00 29 XX BB</span>（XX=CRC）</p>
+  </div>
+
+  <div class="card">
+    <h3>5.3 <code>0x2A</code> 切换 TMS 模式</h3>
+    <table>
+      <thead><tr><th>Data[0]</th><th>模式</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>Mode1</td><td>预设自动；<strong>BLE 已连接时拒绝</strong></td></tr>
+        <tr><td>2</td><td>Mode2</td><td>预设自动</td></tr>
+        <tr><td>3</td><td>Mode3</td><td>自定义参数自动循环</td></tr>
+        <tr><td>4</td><td>Mode4</td><td>BLE 实时控制，停自动 TMS</td></tr>
+      </tbody>
+    </table>
+    <table style="margin-top:10px">
+      <thead><tr><th>示例</th><th>十六进制帧</th></tr></thead>
+      <tbody>
+        <tr><td>Mode1</td><td><span class="hex">AA 05 00 00 2A 01 C6 BB</span></td></tr>
+        <tr><td>Mode2</td><td><span class="hex">AA 05 00 00 2A 02 CF BB</span></td></tr>
+        <tr><td>Mode3</td><td><span class="hex">AA 05 00 00 2A 03 C8 BB</span></td></tr>
+        <tr><td>Mode4</td><td><span class="hex">AA 05 00 00 2A 04 DD BB</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>5.4 <code>0x2B</code> 设置 Mode3 参数（44 字节）</h3>
+    <table>
+      <thead><tr><th>结构</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td>22 组 × 2 字节</td><td>每组：<code>[频率 Hz, 间隔时间 分钟]</code></td></tr>
+        <tr><td>Size</td><td><code>0x0030</code>（48 = 4 + 44）</td></tr>
+        <tr><td>整包长度</td><td>51 字节</td></tr>
+      </tbody>
+    </table>
+    <p>示例（8→7→…→3Hz，间隔均 10 分钟）：</p>
+    <p class="hex" style="word-break:break-all">AA 30 00 00 2B 08 0A 07 0A 06 0A 05 0A 04 0A 03 0A 02 0A 01 0A 08 0A 07 0A 06 0A 05 0A 04 0A 03 0A 02 0A 01 0A 08 0A 07 0A 06 0A 05 0A 04 0A 03 0A 89 BB</p>
+  </div>
+
+  <div class="card">
+    <h3>5.5 <code>0x2C</code> 获取 Mode3 参数</h3>
+    <table>
+      <thead><tr><th>方向</th><th>帧</th></tr></thead>
+      <tbody>
+        <tr><td>下发</td><td><span class="hex">AA 04 00 00 2C 9C BB</span></td></tr>
+        <tr><td>应答</td><td><span class="hex">AB 30 01 00 2C [44B Data] CRC CC</span></td></tr>
+      </tbody>
+    </table>
+    <p>应答 Data 格式同 0x2B。</p>
+  </div>
+
+  <div class="card">
+    <h3>5.6 <code>0x2E</code> 固件版本 — 应答 Data</h3>
+    <table>
+      <thead><tr><th>偏移</th><th>字段</th><th>示例 (V2.2.0.3)</th></tr></thead>
+      <tbody>
+        <tr><td>0</td><td>主版本</td><td><code>0x02</code></td></tr>
+        <tr><td>1</td><td>次版本</td><td><code>0x02</code></td></tr>
+        <tr><td>2</td><td>子版本</td><td><code>0x00</code></td></tr>
+        <tr><td>3</td><td>修订版本</td><td><code>0x03</code></td></tr>
+      </tbody>
+    </table>
+    <p>下发：<span class="hex">AA 04 00 00 2E 92 BB</span></p>
+    <p>应答示例：<span class="hex">AB 08 01 00 2E 02 02 00 03 XX CC</span></p>
+  </div>
+
+  <div class="card">
+    <h3>5.7 <code>0x31</code> 设置音量</h3>
+    <table>
+      <thead><tr><th>Data[0]</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td>1 ~ 16</td><td>有效；越界不处理、不应答</td></tr>
+      </tbody>
+    </table>
+    <table style="margin-top:10px">
+      <thead><tr><th>示例</th><th>帧</th></tr></thead>
+      <tbody>
+        <tr><td>音量 8</td><td><span class="hex">AA 05 00 00 31 08 39 BB</span></td></tr>
+        <tr><td>音量 16</td><td><span class="hex">AA 05 00 00 31 10 71 BB</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>5.8 <code>0x33</code> 设置档位</h3>
+    <table>
+      <thead><tr><th>Data[0]</th><th>模式</th><th>硬件行为</th></tr></thead>
+      <tbody>
+        <tr><td>0</td><td>舒缓</td><td>Q1~Q5 全关</td></tr>
+        <tr><td>1</td><td>强化</td><td>Q1/Q2 开，Q3~Q5 关</td></tr>
+      </tbody>
+    </table>
+    <table style="margin-top:10px">
+      <thead><tr><th>示例</th><th>帧</th></tr></thead>
+      <tbody>
+        <tr><td>舒缓</td><td><span class="hex">AA 05 00 00 33 00 2B BB</span></td></tr>
+        <tr><td>强化</td><td><span class="hex">AA 05 00 00 33 01 2C BB</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>5.9 <code>0x32</code> SN — 应答 Data</h3>
+    <table>
+      <thead><tr><th>长度</th><th>格式</th></tr></thead>
+      <tbody>
+        <tr><td>12 字节</td><td>ASCII 字符</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 6. 心跳 -->
+  <h2>6. 心跳 <code>0x34</code>（设备主动，1Hz）</h2>
+  <div class="card">
+    <div class="note">仅在 BLE 已连接时发送；上位机应订阅 Notify 并解析此包作为状态主通道。</div>
+    <table>
+      <thead>
+        <tr><th>偏移</th><th>长度</th><th>字段</th><th>类型/单位</th><th>说明</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>0</td><td>1</td><td>TMS_Mode</td><td>uint8</td><td>1=Mode1, 2=Mode2, 3=Mode3, 4=Mode4</td></tr>
+        <tr><td>1</td><td>1</td><td>PWM_Freq</td><td>uint8 Hz</td><td>当前 PWM 频率</td></tr>
+        <tr><td>2</td><td>2</td><td>RemainingTime</td><td><strong>uint16 BE</strong> 秒</td><td>Mode4 恒为 0；Mode1/2/3 为当前段剩余秒</td></tr>
+        <tr><td>4</td><td>1</td><td>Volume</td><td>uint8</td><td>1~16</td></tr>
+        <tr><td>5</td><td>1</td><td>A2DP</td><td>uint8</td><td>0=未连接 1=已连接</td></tr>
+        <tr><td>6</td><td>1</td><td>BLE</td><td>uint8</td><td>0=未连接 1=已连接</td></tr>
+        <tr><td>7</td><td>1</td><td>Gear</td><td>uint8</td><td>0=舒缓 1=强化</td></tr>
+      </tbody>
+    </table>
+    <p>帧结构：<span class="hex">AB 0C 00 01 34 [8B Data] CRC CC</span></p>
+  </div>
+
+  <!-- 7. 连接行为 -->
+  <h2>7. BLE 连接 / 断开 联动行为</h2>
+  <div class="card">
+    <table>
+      <thead><tr><th>事件</th><th>设备行为</th></tr></thead>
+      <tbody>
+        <tr><td>BLE 连接成功</td><td>自动切 <strong>Mode4</strong>；停自动 TMS；默认频率 <strong>8Hz</strong></td></tr>
+        <tr><td>BLE 断开 + 当前 Mode4</td><td>回 <strong>Mode1</strong>；恢复自动 TMS；重开 8 小时自动关机计时</td></tr>
+        <tr><td>BLE 断开 + 当前 Mode3</td><td><strong>保持 Mode3</strong></td></tr>
+        <tr><td>BLE 已连接 + 下发 Mode1</td><td><strong>拒绝</strong>，保持原模式</td></tr>
+        <tr><td>下发 0x28 设频</td><td>自动进入 Mode4</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 8. 应答策略 -->
+  <h2>8. 应答策略速查</h2>
+  <div class="card">
+    <table>
+      <thead><tr><th>MsgID</th><th>有无应答</th><th>获取状态方式</th></tr></thead>
+      <tbody>
+        <tr><td><code>0x28</code></td><td>无</td><td>心跳 Data[1]</td></tr>
+        <tr><td><code>0x29</code></td><td>有（2B）</td><td>—</td></tr>
+        <tr><td><code>0x2A</code></td><td>无</td><td>心跳 Data[0]</td></tr>
+        <tr><td><code>0x2B</code></td><td>无</td><td>—</td></tr>
+        <tr><td><code>0x2C</code></td><td>有（44B）</td><td>—</td></tr>
+        <tr><td><code>0x2E</code></td><td>有（4B）</td><td>—</td></tr>
+        <tr><td><code>0x2F</code></td><td>空 ACK</td><td>—</td></tr>
+        <tr><td><code>0x30</code></td><td>有（1B）</td><td>或心跳 Data[5]</td></tr>
+        <tr><td><code>0x31</code></td><td>空 ACK</td><td>心跳 Data[4]</td></tr>
+        <tr><td><code>0x32</code></td><td>有（12B）</td><td>—</td></tr>
+        <tr><td><code>0x33</code></td><td>无</td><td>心跳 Data[7]</td></tr>
+        <tr><td><code>0x34</code></td><td>主动 1Hz</td><td>—</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 9. 上位机实现要点 -->
+  <h2>9. 上位机实现要点</h2>
+  <div class="card">
+    <table>
+      <thead><tr><th>项目</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td>字节序</td><td>Size = 小端；心跳 RemainingTime = <strong>大端</strong></td></tr>
+        <tr><td>组包</td><td>设备侧 10ms 无新字节后解析；建议上位机一次 Write 完整帧</td></tr>
+        <tr><td>MTU</td><td>Mode3 应答约 51 字节，建议协商 MTU ≥ 64</td></tr>
+        <tr><td>Notify</td><td>必须写 CCCD，否则收不到应答和心跳</td></tr>
+        <tr><td>状态同步</td><td>无应答命令（0x28/0x2A/0x33）依赖心跳 0x34</td></tr>
+        <tr><td>CRC 失败</td><td>设备丢弃整包，不会回错误码</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 10. 频率设置速查 -->
+  <h2>10. PWM 频率命令速查</h2>
+  <div class="card">
+    <table>
+      <thead><tr><th>频率</th><th>完整命令帧（hex）</th></tr></thead>
+      <tbody>
+        <tr><td>8 Hz</td><td><span class="hex">AA 05 00 00 28 08 D3 BB</span></td></tr>
+        <tr><td>6 Hz</td><td><span class="hex">AA 05 00 00 28 06 F9 BB</span></td></tr>
+        <tr><td>4 Hz</td><td><span class="hex">AA 05 00 00 28 04 F7 BB</span></td></tr>
+        <tr><td>3 Hz</td><td><span class="hex">AA 05 00 00 28 03 E2 BB</span></td></tr>
+        <tr><td>2 Hz</td><td><span class="hex">AA 05 00 00 28 02 E5 BB</span></td></tr>
+        <tr><td>1 Hz</td><td><span class="hex">AA 05 00 00 28 01 EC BB</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p style="color:var(--muted); font-size:13px; margin-top:32px;">
+    文档依据固件：BLE_GATT_Protocol.c / museconf.h / bsp_ble.c &nbsp;|&nbsp; 保存为 .html 后用浏览器打开即可
+  </p>
+
+</div>
+</body>
+</html>

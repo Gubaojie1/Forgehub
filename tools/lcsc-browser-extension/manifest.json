@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "ForgeHub 立创 STEP 下载助手",
+  "version": "1.0.0",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA4+iQXlabnfVn/KrldnZxrcQ4fyoD2s9b7SNlZCc2Bn3M4PsFjeXfTU3HgAmOmtky4MhNHEfYEeXzWf042rr7vLbhXbD+/PVyrlf1gpxRbxh2TE9Chng0fquw7z08C6u3poK6kX3ocYhBLmikyAXKvJFy6es0RXdTwYEWkp1ejzqhqRMpPd2ixYKUIrDuqe50A3xk1fnvT9XVKgdKR2kfnlhSuv7D9oynVQk17x9DfaLzM+aELME/EMoFt8Rm22WqzaKMLrA6esM7+F7aztczI9DvNf9dPWaLzl3WZRIuDC3ltCFSA+dOySsHgtphQS1S0Nk1m4buxPPDLTApy90iXQIDAQAB",
+  "description": "从 ForgeHub 网页搜索并下载立创商城元件的 STEP 模型。",
+  "permissions": ["nativeMessaging"],
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [{
+    "matches": [
+      "http://47.99.63.33/*",
+      "https://hub.47.99.63.33.sslip.io/*",
+      "http://localhost/*",
+      "http://127.0.0.1/*"
+    ],
+    "js": ["content.js"],
+    "run_at": "document_start"
+  }]
+}

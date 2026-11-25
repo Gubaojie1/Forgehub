@@ -113,7 +113,7 @@ export function Lcsc3DDownloader() {
   }
 
   return <div className="page">
-    <div className="page-head"><div><div className="eyebrow">LCSC · 3D COMPONENT MODEL</div><h1>立创商城 3D 元件下载</h1><p>搜索立创商城元件，找到关联的 3D 模型后下载 STEP 文件。</p></div></div>
+    <div className="page-head"><div><h1>立创商城 3D 元件下载</h1><p>搜索立创商城元件，找到关联的 3D 模型后下载 STEP 文件。</p></div></div>
     <section className="panel lcsc3d-helper">
       <div className="lcsc3d-helper-status"><div><strong>本机下载助手</strong><p>由你电脑上的扩展直接获取 STEP；默认保存在“下载”目录，可按需更改。</p></div><span className={`badge ${extensionReady ? "success" : ""}`}>{extensionReady ? "已连接" : extensionChecked ? "未安装或未连接" : "检测中…"}</span></div>
       {extensionReady && <div className="lcsc3d-folder-row"><span className="lcsc3d-folder-path" title={saveFolder}>保存位置：{saveFolder || "正在读取…"}</span><button className="btn small" type="button" onClick={() => void chooseFolder()} disabled={choosingFolder}>{choosingFolder ? "请选择文件夹…" : "选择目录"}</button></div>}

@@ -515,3 +515,11 @@ tbody tr:hover { background: #f8f9fa; }
 
 /* Shared focus treatment for keyboard navigation. */
 button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ai-release-review { margin: 12px 0; padding: 12px; border: 1px solid var(--line, #e5dfda); border-radius: 12px; overflow-wrap: anywhere; }
+.ai-review-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.ai-release-review h4 { margin: 14px 0 6px; }
+.ai-release-review p { margin: 6px 0; }
+.ai-review-findings { list-style: none; padding: 0; margin: 0; }
+.ai-review-findings > li { padding: 8px 0; border-top: 1px solid var(--line, #e5dfda); }
+.ai-review-evidence { margin: 6px 0 0; padding-left: 20px; color: var(--muted); font-size: 12px; }
+.ai-review-evidence li + li { margin-top: 4px; }
